@@ -325,6 +325,19 @@ export default function App() {
     }
   };
 
+  // Custom confirmation modal state
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    title: "",
+    message: "",
+    onConfirm: () => {},
+  });
+
   // Admin Panel Form Editor & CRUD States
   const [adminTab, setAdminTab] = useState<"sops" | "inquiries">("sops");
   const [editingSubtopicId, setEditingSubtopicId] = useState<{ catId: string; subIdx: number } | null>(null);
@@ -417,36 +430,51 @@ export default function App() {
   };
 
   const handleDeleteSop = (catId: string, subIdx: number) => {
-    if (confirm("Are you sure you want to decommission and delete this SOP protocol? This cannot be undone.")) {
-      const updatedCategories = categories.map((cat) => {
-        if (cat.id === catId) {
-          const updatedSubtopics = [...cat.subtopics];
-          updatedSubtopics.splice(subIdx, 1);
-          return { ...cat, subtopics: updatedSubtopics };
-        }
-        return cat;
-      });
-      updateCategories(updatedCategories);
-    }
+    setConfirmModal({
+      isOpen: true,
+      title: "Decommission SOP",
+      message: "Are you sure you want to decommission and delete this SOP protocol? This cannot be undone.",
+      onConfirm: () => {
+        const updatedCategories = categories.map((cat) => {
+          if (cat.id === catId) {
+            const updatedSubtopics = [...cat.subtopics];
+            updatedSubtopics.splice(subIdx, 1);
+            return { ...cat, subtopics: updatedSubtopics };
+          }
+          return cat;
+        });
+        updateCategories(updatedCategories);
+      }
+    });
   };
 
   const handleClearAllSops = () => {
-    if (confirm("Are you sure you want to decommission and delete ALL SOP protocols across all divisions? This will give you a completely clean slate to upload your own data.")) {
-      const cleared = categories.map((cat) => ({ ...cat, subtopics: [] }));
-      updateCategories(cleared);
-    }
+    setConfirmModal({
+      isOpen: true,
+      title: "Decommission All SOPs",
+      message: "Are you sure you want to decommission and delete ALL SOP protocols across all divisions? This will give you a completely clean slate to upload your own data.",
+      onConfirm: () => {
+        const cleared = categories.map((cat) => ({ ...cat, subtopics: [] }));
+        updateCategories(cleared);
+      }
+    });
   };
 
   const handleDeleteInquiry = (id: string) => {
-    if (confirm("Remove this inquiry from the registry logs?")) {
-      const updated = submittedInquiries.filter((inq) => inq.id !== id);
-      setSubmittedInquiries(updated);
-      try {
-        localStorage.setItem("pharma_inquiries", JSON.stringify(updated));
-      } catch (e) {
-        console.error(e);
+    setConfirmModal({
+      isOpen: true,
+      title: "Archive Inquiry",
+      message: "Remove this inquiry from the registry logs?",
+      onConfirm: () => {
+        const updated = submittedInquiries.filter((inq) => inq.id !== id);
+        setSubmittedInquiries(updated);
+        try {
+          localStorage.setItem("pharma_inquiries", JSON.stringify(updated));
+        } catch (e) {
+          console.error(e);
+        }
       }
-    }
+    });
   };
 
   const [activeCategoryId, setActiveCategoryId] = useState<string>("dashboard");
@@ -2434,6 +2462,53 @@ export default function App() {
                   </button>
                 </div>
               </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Custom Confirmation Dialog */}
+      <AnimatePresence>
+        {confirmModal.isOpen && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs">
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-slate-900 border border-slate-800 text-slate-100 rounded-3xl p-6 md:p-8 max-w-md w-full shadow-2xl space-y-6 text-left"
+            >
+              <div className="flex items-center space-x-3.5">
+                <div className="h-10 w-10 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-500">
+                  <Trash2 className="h-5 w-5" />
+                </div>
+                <h3 className="font-sans font-black text-xl text-white tracking-tight">
+                  {confirmModal.title}
+                </h3>
+              </div>
+              
+              <p className="text-xs text-slate-400 leading-relaxed font-medium">
+                {confirmModal.message}
+              </p>
+
+              <div className="flex space-x-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+                  className="flex-1 py-2.5 bg-slate-850 hover:bg-slate-800 text-slate-300 font-semibold text-xs rounded-xl border border-slate-800 transition-colors cursor-pointer text-center"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    confirmModal.onConfirm();
+                    setConfirmModal(prev => ({ ...prev, isOpen: false }));
+                  }}
+                  className="flex-1 py-2.5 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded-xl transition-all shadow-md shadow-red-500/10 cursor-pointer text-center"
+                >
+                  Confirm Action
+                </button>
+              </div>
             </motion.div>
           </div>
         )}
